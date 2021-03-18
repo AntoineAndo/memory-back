@@ -4,48 +4,80 @@ const mongoose = require('mongoose');
 
 const Schema = mongoose.Schema;
 
+const GameSchema = new Schema({
+	_id 		: String,
+	cards 		: [],
+	pairNumber 	: { type: Number, default: 18},
+	pairFound 	: Number,
+	date 		: { type: Date, default: Date.now },
+});
 
+router.get('/:gameID', function(req, res, next) {
+	let gameID = req.params.gameID;
 
-//var Game = require('../model/game');
+	//Connexion à la BDD
+	mongoose.connect('mongodb+srv://oclock_user:SGWrmgw8iepb3evs@cluster0.ofx2k.mongodb.net/memory_oclock?retryWrites=true&w=majority', {
+		useNewUrlParser 	: true,
+		useUnifiedTopology 	: true,
+		useFindAndModify 	: false,
+		useCreateIndex 		: true
+	});
 
-/* GET users listing. */
-router.get('/', function(req, res, next) {
-  return res.json({ message: 'User Show' });
+	let gameModel = mongoose.model('game', GameSchema );
+
+	//Recherche d'une game correspondant au gameID de l'url
+	gameModel.findOne({"_id" : gameID}, function (err, docs) {
+		if(err){
+			console.error(err);
+			return res.json({
+				"status"	: "KO",
+				"message"	: "Erreur technique",
+				"info"		: err
+			})
+		}
+
+		if(docs == null){
+	  		return res.json({
+					"status"	: "KO",
+					"message"	: "Partie introuvable",
+					"data"		: docs
+			});
+		}
+
+  		return res.json({
+				"status"	: "OK",
+				"message"	: "Game loaded",
+				"data"		: docs
+		});
+
+  		//Fermeture de la connexion
+  		mongoose.connection.close()
+	});
 });
 
 router.post('/', function(req, res, next){
 
-	console.log("REQUEST");
-	console.log(req);
-	console.log(req.body);
-
+	//Connexion à la BDD
 	mongoose.connect('mongodb+srv://oclock_user:SGWrmgw8iepb3evs@cluster0.ofx2k.mongodb.net/memory_oclock?retryWrites=true&w=majority', {
-		useNewUrlParser: true,
-		useUnifiedTopology: true,
-		useFindAndModify: false,
-		useCreateIndex: true
+		useNewUrlParser		: true,
+		useUnifiedTopology	: true,
+		useFindAndModify	: false,
+		useCreateIndex		: true
 	});
 
-	const GameSchema = new Schema({
-		gameID: String,
-		cards: [],
-		pairNumber: { type: Number, default: 5},
-		pairFound: Number,
-		date: { type: Date, default: Date.now },
-	});
+	let gameModel = mongoose.model('game', GameSchema );
 
-	let gameInstance = mongoose.model('game', GameSchema );
-
-	let game = new gameInstance();
-	game.gameID 	= req.body.gameID;
+	//Instanciation d'un nouveau model Mongo de type Game avec les valeurs passées dans la requête
+	let game = new gameModel();
+	game._id 		= req.body.gameID;
 	game.cards 		= req.body.cards;
 	game.pairNumber = req.body.pairNumber;
 	game.pairFound 	= req.body.pairFound;
 
-	console.log("game to save");
-	console.log(game);
+	let data = game.toObject();
 
-	game.save(function (err) {
+	//Sauvegarde ou mise à jour de la Game
+	gameModel.findOneAndUpdate({_id : game._id}, game, {upsert: true}, function (err, doc) {
 		if(err){
 			console.error(err);
 			return res.json({
@@ -61,18 +93,45 @@ router.post('/', function(req, res, next){
 				"info"		: ""
 		});
 
+  		//Fermeture de la connexion
   		mongoose.connection.close()
 	});
-	/*
-	const collection = db.collection('games');
-
-	collection.insertMany([req.body
-	], function(err, result) {
-		if(!err)
-			res.status(200).json(result);
-	});
-	*/
 
 })
 
+
+/* Route de suppression d'une partie */
+router.delete('/:gameID', function(req, res, next) {
+	let gameID = req.params.gameID;
+
+	//Connexion à la BDD
+	mongoose.connect('mongodb+srv://oclock_user:SGWrmgw8iepb3evs@cluster0.ofx2k.mongodb.net/memory_oclock?retryWrites=true&w=majority', {
+		useNewUrlParser 	: true,
+		useUnifiedTopology 	: true,
+		useFindAndModify 	: false,
+		useCreateIndex 		: true
+	});
+
+	let gameModel = mongoose.model('game', GameSchema );
+
+	//Recherche d'une game correspondant au gameID de l'url
+	gameModel.deleteOne({"_id" : gameID}, function (err) {
+		if(err){
+			console.error(err);
+			return res.json({
+				"status"	: "KO",
+				"message"	: "Erreur technique",
+				"info"		: err
+			})
+		}
+
+  		return res.json({
+				"status"	: "OK",
+				"message"	: "Game deleted"
+		});
+
+  		//Fermeture de la connexion
+  		mongoose.connection.close()
+	});
+});
 module.exports = router;
