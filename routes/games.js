@@ -5,15 +5,12 @@ const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
 const GameSchema = new Schema({
-	_id 		: String,
-	cards 		: [],
-	pairNumber 	: { type: Number, default: 18},
-	pairFound 	: Number,
-	date 		: { type: Date, default: Date.now },
+	_id 	: String,
+	time 	: Number,
+	date 	: { type: Date, default: Date.now },
 });
 
-router.get('/:gameID', function(req, res, next) {
-	let gameID = req.params.gameID;
+router.get('/', function(req, res, next) {
 
 	//Connexion à la BDD
 	mongoose.connect('mongodb+srv://oclock_user:SGWrmgw8iepb3evs@cluster0.ofx2k.mongodb.net/memory_oclock?retryWrites=true&w=majority', {
@@ -26,7 +23,7 @@ router.get('/:gameID', function(req, res, next) {
 	let gameModel = mongoose.model('game', GameSchema );
 
 	//Recherche d'une game correspondant au gameID de l'url
-	gameModel.findOne({"_id" : gameID}, function (err, docs) {
+	gameModel.find({}, function (err, docs) {
 		if(err){
 			console.error(err);
 			return res.json({
@@ -34,14 +31,6 @@ router.get('/:gameID', function(req, res, next) {
 				"message"	: "Erreur technique",
 				"info"		: err
 			})
-		}
-
-		if(docs == null){
-	  		return res.json({
-					"status"	: "KO",
-					"message"	: "Partie introuvable",
-					"data"		: docs
-			});
 		}
 
   		return res.json({
@@ -69,10 +58,8 @@ router.post('/', function(req, res, next){
 
 	//Instanciation d'un nouveau model Mongo de type Game avec les valeurs passées dans la requête
 	let game = new gameModel();
-	game._id 		= req.body.gameID;
-	game.cards 		= req.body.cards;
-	game.pairNumber = req.body.pairNumber;
-	game.pairFound 	= req.body.pairFound;
+	game._id 	= req.body.gameID;
+	game.time 	= req.body.time
 
 	let data = game.toObject();
 
@@ -99,39 +86,4 @@ router.post('/', function(req, res, next){
 
 })
 
-
-/* Route de suppression d'une partie */
-router.delete('/:gameID', function(req, res, next) {
-	let gameID = req.params.gameID;
-
-	//Connexion à la BDD
-	mongoose.connect('mongodb+srv://oclock_user:SGWrmgw8iepb3evs@cluster0.ofx2k.mongodb.net/memory_oclock?retryWrites=true&w=majority', {
-		useNewUrlParser 	: true,
-		useUnifiedTopology 	: true,
-		useFindAndModify 	: false,
-		useCreateIndex 		: true
-	});
-
-	let gameModel = mongoose.model('game', GameSchema );
-
-	//Recherche d'une game correspondant au gameID de l'url
-	gameModel.deleteOne({"_id" : gameID}, function (err) {
-		if(err){
-			console.error(err);
-			return res.json({
-				"status"	: "KO",
-				"message"	: "Erreur technique",
-				"info"		: err
-			})
-		}
-
-  		return res.json({
-				"status"	: "OK",
-				"message"	: "Game deleted"
-		});
-
-  		//Fermeture de la connexion
-  		mongoose.connection.close()
-	});
-});
 module.exports = router;
